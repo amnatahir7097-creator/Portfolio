@@ -1,50 +1,62 @@
-// ===== 1. Mobile menu =====
+// Mobile menu
 const menuBtn = document.getElementById('menuBtn');
 const navLinks = document.getElementById('navLinks');
-
+const closeMenu = () => { navLinks.classList.remove('open'); menuBtn.setAttribute('aria-expanded', 'false'); };
 menuBtn.addEventListener('click', () => {
-  const open = navLinks.classList.toggle('open');
-  menuBtn.setAttribute('aria-expanded', open);
+  menuBtn.setAttribute('aria-expanded', navLinks.classList.toggle('open'));
 });
-// close menu after tapping a link
-navLinks.querySelectorAll('a').forEach(a =>
-  a.addEventListener('click', () => navLinks.classList.remove('open'))
-);
+navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
 
-// ===== 2. Highlight the nav link of the section you're viewing =====
-const links = navLinks.querySelectorAll('a');
-const sections = [...links].map(l => document.querySelector(l.getAttribute('href')));
+// Footer year
+document.getElementById('year').textContent = new Date().getFullYear();
 
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + entry.target.id));
-    }
+// Marquee: repeat the list so it loops smoothly
+const track = document.getElementById('track');
+track.innerHTML += track.innerHTML;
+
+// Highlight the nav link of the section on screen
+const links = [...navLinks.querySelectorAll('a:not(.nav-cta)')];
+const spy = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
   });
-}, { rootMargin: '-40% 0px -55% 0px' });
-sections.forEach(s => s && observer.observe(s));
+}, { rootMargin: '-45% 0px -50% 0px' });
+links.forEach(l => { const s = document.querySelector(l.getAttribute('href')); if (s) spy.observe(s); });
 
-// ===== 3. Contact form (opens the visitor's email app, no server needed) =====
+// Count-up numbers (skipped if the visitor prefers reduced motion)
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const counters = document.querySelectorAll('[data-count]');
+const countObs = new IntersectionObserver((entries, obs) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    obs.unobserve(e.target);
+    const el = e.target, end = parseFloat(el.dataset.count), suffix = el.dataset.suffix || '';
+    const dec = String(end).includes('.') ? 1 : 0, start = performance.now();
+    const tick = now => {
+      const p = Math.min((now - start) / 1200, 1);
+      el.textContent = (end * p).toFixed(dec) + (p === 1 ? suffix : '');
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}, { threshold: .6 });
+if (!reduce) counters.forEach(c => countObs.observe(c));
+
+// Contact form: validates, then opens your email app with the message filled in
 const form = document.getElementById('contactForm');
 const msg = document.getElementById('formMsg');
-
 form.addEventListener('submit', e => {
   e.preventDefault();
   const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
-  const message = document.getElementById('message').value.trim();
-
-  if (!name || !message || !/^\S+@\S+\.\S+$/.test(email)) {
-    msg.textContent = 'Please enter your name, a valid email and a message.';
+  const text = document.getElementById('message').value.trim();
+  if (!name || !/^\S+@\S+\.\S+$/.test(email) || !text) {
     msg.className = 'form-msg error';
+    msg.textContent = 'Please add your name, a valid email and a message.';
     return;
   }
-  const subject = encodeURIComponent('Portfolio enquiry from ' + name);
-  const body = encodeURIComponent(message + '\n\nFrom: ' + name + ' (' + email + ')');
-  window.location.href = `mailto:amnatahir7097@gmail.com?subject=${subject}&body=${body}`;
-  msg.textContent = 'Opening your email app...';
   msg.className = 'form-msg ok';
+  msg.textContent = 'Opening your email app...';
+  location.href = 'mailto:amnatahir7097@gmail.com?subject=' + encodeURIComponent('Portfolio message from ' + name) +
+    '&body=' + encodeURIComponent(text + '\n\nFrom: ' + name + ' (' + email + ')');
 });
-
-// ===== 4. Footer year =====
-document.getElementById('year').textContent = new Date().getFullYear();
